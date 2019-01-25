@@ -247,18 +247,32 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
             if (!_isOnlyRectMoving) {
                 [_pointsArray replaceObjectAtIndex:_currentMovingPointIndex withObject:newTouch];
             }else{
-                [self onlyRectMovingPoint:newTouch currentIndex:_currentMovingPointIndex];
-                [_pointsArray replaceObjectAtIndex:_currentMovingPointIndex withObject:newTouch];
-                
-                //判断对角顶点，最小间距
-//                if (![self drawableJudgeRectTwoPointInMinDistance]) {
-//                    [self touchCancelWithPoint:point];
+                NSArray *points = [NSArray arrayWithArray:_pointsArray];
+                NSArray *tmpPoints = [self onlyRectMovingPoint:newTouch currentIndex:_currentMovingPointIndex points:points];
+//                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:tmpPoints]) {
+                    _pointsArray = [NSMutableArray arrayWithArray:tmpPoints];
+                    [_pointsArray replaceObjectAtIndex:_currentMovingPointIndex withObject:newTouch];
 //                }
             }
         }else{
             //根据中间点的位移，确定两端点的位移
-            [self resetTwoPointsByCenterPointWithTouch:p];
+//            if (!_isOnlyRectMoving) {
+                [self resetTwoPointsByCenterPointWithTouch:p];
+//            }else{
+//                NSArray *points = [NSArray arrayWithArray:_pointsArray];
+//                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:points]) {
+//                    [self resetTwoPointsByCenterPointWithTouch:p];
+//                }else{
+//                    [self touchCancelWithPoint:point];
+//                }
+//            }
         }
+//        if (_isOnlyRectMoving) {
+//            //矩形矫正
+//            NSArray *points = [NSArray arrayWithArray:_pointsArray];
+//            NSArray *tmpPoints = [self resetOnlyRectPoints:points];
+//            _pointsArray = [NSMutableArray arrayWithArray:tmpPoints];
+//        }
         //四个边角点 A B C D，重新初始化中点
         [self initCenterPointBetweenTwo];
         
@@ -286,12 +300,12 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
 
 #pragma mark private methods
 //判断对角顶点，最小间距
--(BOOL)drawableJudgeRectTwoPointInMinDistance {
+-(BOOL)drawableJudgeRectTwoPointInMinDistanceWithPoints:(NSArray*)points {
     
-    NSArray *pointA = [_pointsArray objectAtIndex:0];
-    NSArray *pointB = [_pointsArray objectAtIndex:1];
-    NSArray *pointC = [_pointsArray objectAtIndex:2];
-    NSArray *pointD = [_pointsArray objectAtIndex:3];
+    NSArray *pointA = [points objectAtIndex:0];
+    NSArray *pointB = [points objectAtIndex:1];
+    NSArray *pointC = [points objectAtIndex:2];
+    NSArray *pointD = [points objectAtIndex:3];
     
     CGFloat acX2 = pow([pointA[0] floatValue]-[pointC[0] floatValue], 2);
     CGFloat acY2 = pow([pointA[1] floatValue]-[pointC[1] floatValue], 2);
@@ -306,10 +320,13 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
     return NO;
 }
 //限制只进行矩形位移
--(void)onlyRectMovingPoint:(NSArray*)movingP currentIndex:(NSInteger)index {
+-(NSArray*)onlyRectMovingPoint:(NSArray*)movingP currentIndex:(NSInteger)index points:(NSArray*)points {
     if (movingP.count<2) {
-        return;
+        return points;
     }
+    
+    NSMutableArray *tmpPoints = [NSMutableArray arrayWithArray:points];
+    
     /* 边框圆 A B C D E F G H
      A--E--B
      |     |
@@ -317,8 +334,8 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
      |     |
      D--G--C
      */
-    if (index<_pointsArray.count) {
-        NSArray *oldPointArr = [_pointsArray objectAtIndex:index];
+    if (index<tmpPoints.count) {
+        NSArray *oldPointArr = [tmpPoints objectAtIndex:index];
         NSInteger dx = [movingP[0] integerValue]-[oldPointArr[0] integerValue];
         NSInteger dy = [movingP[1] integerValue]-[oldPointArr[1] integerValue];
         
@@ -326,8 +343,8 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
             case 0:
             {
                 //A
-                NSArray *pointB = [_pointsArray objectAtIndex:1];
-                NSArray *pointD = [_pointsArray objectAtIndex:3];
+                NSArray *pointB = [tmpPoints objectAtIndex:1];
+                NSArray *pointD = [tmpPoints objectAtIndex:3];
                 
                 pointB = @[pointB[0], [NSNumber numberWithFloat:([pointB[1]integerValue]+dy)]];
                 pointD = @[[NSNumber numberWithFloat:([pointD[0]integerValue]+dx)], pointD[1]];
@@ -338,37 +355,37 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
             case 1:
             {
                 //B
-                NSArray *pointA = [_pointsArray objectAtIndex:0];
-                NSArray *pointC = [_pointsArray objectAtIndex:2];
+                NSArray *pointA = [tmpPoints objectAtIndex:0];
+                NSArray *pointC = [tmpPoints objectAtIndex:2];
                 
                 pointA = @[pointA[0], [NSNumber numberWithFloat:([pointA[1]integerValue]+dy)]];
                 pointC = @[[NSNumber numberWithFloat:([pointC[0]integerValue]+dx)], pointC[1]];
-                [_pointsArray replaceObjectAtIndex:0 withObject:pointA];
-                [_pointsArray replaceObjectAtIndex:2 withObject:pointC];
+                [tmpPoints replaceObjectAtIndex:0 withObject:pointA];
+                [tmpPoints replaceObjectAtIndex:2 withObject:pointC];
                 break;
             }
             case 2:
             {
                 //C
-                NSArray *pointB = [_pointsArray objectAtIndex:1];
-                NSArray *pointD = [_pointsArray objectAtIndex:3];
+                NSArray *pointB = [tmpPoints objectAtIndex:1];
+                NSArray *pointD = [tmpPoints objectAtIndex:3];
                 
                 pointD = @[pointD[0], [NSNumber numberWithFloat:([pointD[1]integerValue]+dy)]];
                 pointB = @[[NSNumber numberWithFloat:([pointB[0]integerValue]+dx)], pointB[1]];
-                [_pointsArray replaceObjectAtIndex:1 withObject:pointB];
-                [_pointsArray replaceObjectAtIndex:3 withObject:pointD];
+                [tmpPoints replaceObjectAtIndex:1 withObject:pointB];
+                [tmpPoints replaceObjectAtIndex:3 withObject:pointD];
                 break;
             }
             case 3:
             {
                 //D
-                NSArray *pointA = [_pointsArray objectAtIndex:0];
-                NSArray *pointC = [_pointsArray objectAtIndex:2];
+                NSArray *pointA = [tmpPoints objectAtIndex:0];
+                NSArray *pointC = [tmpPoints objectAtIndex:2];
                 
                 pointC = @[pointC[0], [NSNumber numberWithFloat:([pointC[1]integerValue]+dy)]];
                 pointA = @[[NSNumber numberWithFloat:([pointA[0]integerValue]+dx)], pointA[1]];
-                [_pointsArray replaceObjectAtIndex:0 withObject:pointA];
-                [_pointsArray replaceObjectAtIndex:2 withObject:pointC];
+                [tmpPoints replaceObjectAtIndex:0 withObject:pointA];
+                [tmpPoints replaceObjectAtIndex:2 withObject:pointC];
                 break;
             }
                 
@@ -377,37 +394,48 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
         }
     }
     
-    //矩形纠正
-    {
-        NSArray *pointA = [_pointsArray objectAtIndex:0];
-        NSArray *pointB = [_pointsArray objectAtIndex:1];
-        NSArray *pointC = [_pointsArray objectAtIndex:2];
-        NSArray *pointD = [_pointsArray objectAtIndex:3];
-        //AB
-        if ([pointA[1]integerValue]!=[pointB[1]integerValue]) {
-            NSInteger abY = ([pointA[1]integerValue]+[pointB[1]integerValue])/2;
-            pointA = @[pointA[0], [NSNumber numberWithInteger:abY]];
-            pointB = @[pointB[0], [NSNumber numberWithInteger:abY]];
-        }
-        //BC
-        if ([pointB[0]integerValue]!=[pointC[0]integerValue]) {
-            NSInteger bcX = ([pointB[0]integerValue]+[pointC[0]integerValue])/2;
-            pointB = @[[NSNumber numberWithInteger:bcX], pointB[1]];
-            pointC = @[[NSNumber numberWithInteger:bcX], pointC[1]];
-        }
-        //CD
-        if ([pointC[1]integerValue]!=[pointD[1]integerValue]) {
-            NSInteger cdY = ([pointC[1]integerValue]+[pointD[1]integerValue])/2;
-            pointC = @[pointC[0], [NSNumber numberWithInteger:cdY]];
-            pointD = @[pointD[0], [NSNumber numberWithInteger:cdY]];
-        }
-        //DA
-        if ([pointA[0]integerValue]!=[pointD[0]integerValue]) {
-            NSInteger adX = ([pointA[0]integerValue]+[pointD[0]integerValue])/2;
-            pointA = @[[NSNumber numberWithInteger:adX], pointA[1]];
-            pointD = @[[NSNumber numberWithInteger:adX], pointD[1]];
-        }
+    return tmpPoints;
+}
+//矩形纠正
+-(NSArray*)resetOnlyRectPoints:(NSArray*)points {
+    
+    NSMutableArray *tmpPoints = [NSMutableArray arrayWithArray:points];
+    
+    NSArray *pointA = [tmpPoints objectAtIndex:0];
+    NSArray *pointB = [tmpPoints objectAtIndex:1];
+    NSArray *pointC = [tmpPoints objectAtIndex:2];
+    NSArray *pointD = [tmpPoints objectAtIndex:3];
+    //AB
+    NSInteger abY = ([pointA[1]integerValue]+[pointB[1]integerValue])/2;
+    NSInteger bcX = ([pointB[0]integerValue]+[pointC[0]integerValue])/2;
+    NSInteger cdY = ([pointC[1]integerValue]+[pointD[1]integerValue])/2;
+    NSInteger adX = ([pointA[0]integerValue]+[pointD[0]integerValue])/2;
+    if ([pointA[1]integerValue]!=[pointB[1]integerValue]) {
+        pointA = @[pointA[0], [NSNumber numberWithInteger:abY]];
+        pointB = @[pointB[0], [NSNumber numberWithInteger:abY]];
     }
+    //BC
+    if ([pointB[0]integerValue]!=[pointC[0]integerValue]) {
+        pointB = @[[NSNumber numberWithInteger:bcX], pointB[1]];
+        pointC = @[[NSNumber numberWithInteger:bcX], pointC[1]];
+    }
+    //CD
+    if ([pointC[1]integerValue]!=[pointD[1]integerValue]) {
+        pointC = @[pointC[0], [NSNumber numberWithInteger:cdY]];
+        pointD = @[pointD[0], [NSNumber numberWithInteger:cdY]];
+    }
+    //DA
+    if ([pointA[0]integerValue]!=[pointD[0]integerValue]) {
+        pointA = @[[NSNumber numberWithInteger:adX], pointA[1]];
+        pointD = @[[NSNumber numberWithInteger:adX], pointD[1]];
+    }
+    
+    //        pointA = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:abY]];
+    //        pointB = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:abY]];
+    //        pointC = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:cdY]];
+    //        pointD = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:cdY]];
+    //        tmpPoints = [NSMutableArray arrayWithArray:@[pointA, pointB, pointC, pointD]];
+    return tmpPoints;
 }
 
 //画边框圆-交点
