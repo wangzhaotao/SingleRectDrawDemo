@@ -30,7 +30,7 @@
 
 #import "TJRectModel.h"
 
-static CGFloat const kRectLineWidth = 1;
+static CGFloat const kRectLineWidth = 4;
 static CGFloat const kRectArcWidth = 6;
 static CGFloat const kRectPointMinDistance = 30;
 
@@ -134,12 +134,14 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
      D--G--C
      */
     /* 边框圆 A B C D E F G H 8个点 */
-    for (NSArray *pArr in _pointsArray) {
-        [self drawACircleWithPoint:pArr withContextRef:context];
+    if (_enableEdite) {
+        for (NSArray *pArr in _pointsArray) {
+            [self drawACircleWithPoint:pArr withContextRef:context];
+        }
     }
     
     /* 画边框连线 */
-    CGContextSetLineWidth(context, 4);
+    CGContextSetLineWidth(context, kRectLineWidth);
     CGPoint points[5];
     points[0] = [self getCGPointWithNumbersArray:_pointsArray[0]]; //A
     points[1] = [self getCGPointWithNumbersArray:_pointsArray[1]]; //B
@@ -148,6 +150,10 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
     points[4] = [self getCGPointWithNumbersArray:_pointsArray[0]]; //A
     CGContextAddLines(context, points, 5);
     CGContextDrawPath(context, kCGPathStroke);
+    
+    //起点添加一个小圆圈，补齐直线x交点缺口
+    [self drawACircleWithPoint:@[[NSNumber numberWithFloat:points[0].x], [NSNumber numberWithFloat:points[0].y]]
+                      arcWidth:kRectLineWidth/4 withContextRef:context];
 }
 //NSArray <-->CGPoint 转换
 -(CGPoint)getCGPointWithNumbersArray:(NSArray*)numberArr
@@ -244,35 +250,35 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
         
         //重绘
         if (_currentMovingPointIndex<4) {
-            if (!_isOnlyRectMoving) {
+            if (!_enableOnlyRectMoving) {
                 [_pointsArray replaceObjectAtIndex:_currentMovingPointIndex withObject:newTouch];
             }else{
                 NSArray *points = [NSArray arrayWithArray:_pointsArray];
                 NSArray *tmpPoints = [self onlyRectMovingPoint:newTouch currentIndex:_currentMovingPointIndex points:points];
-//                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:tmpPoints]) {
+                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:tmpPoints]) {
                     _pointsArray = [NSMutableArray arrayWithArray:tmpPoints];
                     [_pointsArray replaceObjectAtIndex:_currentMovingPointIndex withObject:newTouch];
-//                }
+                }
             }
         }else{
             //根据中间点的位移，确定两端点的位移
-//            if (!_isOnlyRectMoving) {
+            if (!_enableOnlyRectMoving) {
                 [self resetTwoPointsByCenterPointWithTouch:p];
-//            }else{
-//                NSArray *points = [NSArray arrayWithArray:_pointsArray];
-//                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:points]) {
-//                    [self resetTwoPointsByCenterPointWithTouch:p];
-//                }else{
-//                    [self touchCancelWithPoint:point];
-//                }
-//            }
+            }else{
+                NSArray *points = [NSArray arrayWithArray:_pointsArray];
+                if ([self drawableJudgeRectTwoPointInMinDistanceWithPoints:points]) {
+                    [self resetTwoPointsByCenterPointWithTouch:p];
+                }else{
+                    [self touchCancelWithPoint:point];
+                }
+            }
         }
-//        if (_isOnlyRectMoving) {
-//            //矩形矫正
-//            NSArray *points = [NSArray arrayWithArray:_pointsArray];
-//            NSArray *tmpPoints = [self resetOnlyRectPoints:points];
-//            _pointsArray = [NSMutableArray arrayWithArray:tmpPoints];
-//        }
+        if (_enableOnlyRectMoving) {
+            //矩形矫正
+            NSArray *points = [NSArray arrayWithArray:_pointsArray];
+            NSArray *tmpPoints = [self resetOnlyRectPoints:points];
+            _pointsArray = [NSMutableArray arrayWithArray:tmpPoints];
+        }
         //四个边角点 A B C D，重新初始化中点
         [self initCenterPointBetweenTwo];
         
@@ -299,22 +305,51 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
 
 
 #pragma mark private methods
-//判断对角顶点，最小间距
--(BOOL)drawableJudgeRectTwoPointInMinDistanceWithPoints:(NSArray*)points {
-    
+-(CGFloat)getRectMinDistance:(NSArray*)points {
     NSArray *pointA = [points objectAtIndex:0];
     NSArray *pointB = [points objectAtIndex:1];
     NSArray *pointC = [points objectAtIndex:2];
     NSArray *pointD = [points objectAtIndex:3];
     
-    CGFloat acX2 = pow([pointA[0] floatValue]-[pointC[0] floatValue], 2);
-    CGFloat acY2 = pow([pointA[1] floatValue]-[pointC[1] floatValue], 2);
+    CGFloat abDistance = [self getDistanceBetweenTwoPoints:pointA point2:pointB];
+    CGFloat bcDistance = [self getDistanceBetweenTwoPoints:pointB point2:pointC];
+    CGFloat cdDistance = [self getDistanceBetweenTwoPoints:pointC point2:pointD];
+    CGFloat adDistance = [self getDistanceBetweenTwoPoints:pointA point2:pointD];
+    CGFloat acDistance = [self getDistanceBetweenTwoPoints:pointA point2:pointC];
+    CGFloat bdDistance = [self getDistanceBetweenTwoPoints:pointB point2:pointD];
+    
+    CGFloat minDistance = abDistance;
+    if (bcDistance>minDistance) {
+        minDistance = bcDistance;
+    }
+    if (cdDistance>minDistance) {
+        minDistance = cdDistance;
+    }
+    if (adDistance>minDistance) {
+        minDistance = adDistance;
+    }
+    if (acDistance>minDistance) {
+        minDistance = acDistance;
+    }
+    if (bdDistance>minDistance) {
+        minDistance = bdDistance;
+    }
+    
+    return minDistance;
+}
+-(CGFloat)getDistanceBetweenTwoPoints:(NSArray*)point1 point2:(NSArray*)point2 {
+    
+    CGFloat acX2 = pow([point1[0] floatValue]-[point2[0] floatValue], 2);
+    CGFloat acY2 = pow([point1[1] floatValue]-[point2[1] floatValue], 2);
     CGFloat acDistance = sqrtf(acX2+acY2);
     
-    CGFloat bdX2 = pow([pointB[0] floatValue]-[pointD[0] floatValue], 2);
-    CGFloat bdY2 = pow([pointB[1] floatValue]-[pointD[1] floatValue], 2);
-    CGFloat bdDistance = sqrtf(bdX2+bdY2);
-    if (acDistance>kRectPointMinDistance && bdDistance>kRectPointMinDistance) {
+    return acDistance;
+}
+//判断对角顶点，最小间距
+-(BOOL)drawableJudgeRectTwoPointInMinDistanceWithPoints:(NSArray*)points {
+    
+    CGFloat minDstance = [self getRectMinDistance:points];
+    if (minDstance>kRectPointMinDistance) {
         return YES;
     }
     return NO;
@@ -348,8 +383,8 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
                 
                 pointB = @[pointB[0], [NSNumber numberWithFloat:([pointB[1]integerValue]+dy)]];
                 pointD = @[[NSNumber numberWithFloat:([pointD[0]integerValue]+dx)], pointD[1]];
-                [_pointsArray replaceObjectAtIndex:1 withObject:pointB];
-                [_pointsArray replaceObjectAtIndex:3 withObject:pointD];
+                [tmpPoints replaceObjectAtIndex:1 withObject:pointB];
+                [tmpPoints replaceObjectAtIndex:3 withObject:pointD];
                 break;
             }
             case 1:
@@ -410,43 +445,28 @@ typedef NS_ENUM(NSInteger, QuadrilateralType) {
     NSInteger bcX = ([pointB[0]integerValue]+[pointC[0]integerValue])/2;
     NSInteger cdY = ([pointC[1]integerValue]+[pointD[1]integerValue])/2;
     NSInteger adX = ([pointA[0]integerValue]+[pointD[0]integerValue])/2;
-    if ([pointA[1]integerValue]!=[pointB[1]integerValue]) {
-        pointA = @[pointA[0], [NSNumber numberWithInteger:abY]];
-        pointB = @[pointB[0], [NSNumber numberWithInteger:abY]];
-    }
-    //BC
-    if ([pointB[0]integerValue]!=[pointC[0]integerValue]) {
-        pointB = @[[NSNumber numberWithInteger:bcX], pointB[1]];
-        pointC = @[[NSNumber numberWithInteger:bcX], pointC[1]];
-    }
-    //CD
-    if ([pointC[1]integerValue]!=[pointD[1]integerValue]) {
-        pointC = @[pointC[0], [NSNumber numberWithInteger:cdY]];
-        pointD = @[pointD[0], [NSNumber numberWithInteger:cdY]];
-    }
-    //DA
-    if ([pointA[0]integerValue]!=[pointD[0]integerValue]) {
-        pointA = @[[NSNumber numberWithInteger:adX], pointA[1]];
-        pointD = @[[NSNumber numberWithInteger:adX], pointD[1]];
-    }
     
-    //        pointA = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:abY]];
-    //        pointB = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:abY]];
-    //        pointC = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:cdY]];
-    //        pointD = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:cdY]];
-    //        tmpPoints = [NSMutableArray arrayWithArray:@[pointA, pointB, pointC, pointD]];
+    pointA = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:abY]];
+    pointB = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:abY]];
+    pointC = @[[NSNumber numberWithInteger:bcX], [NSNumber numberWithInteger:cdY]];
+    pointD = @[[NSNumber numberWithInteger:adX], [NSNumber numberWithInteger:cdY]];
+    tmpPoints = [NSMutableArray arrayWithArray:@[pointA, pointB, pointC, pointD]];
     return tmpPoints;
 }
 
 //画边框圆-交点
 -(void)drawACircleWithPoint:(NSArray*)point withContextRef:(CGContextRef)context
 {
+    [self drawACircleWithPoint:point arcWidth:kRectArcWidth withContextRef:context];
+}
+-(void)drawACircleWithPoint:(NSArray*)point arcWidth:(CGFloat)arcWidth withContextRef:(CGContextRef)context
+{
     if (point.count==2) {
         
         CGFloat x = [point[0] floatValue];
         CGFloat y = [point[1] floatValue];
         /* 边框圆 */
-        CGFloat lineWidth = kRectLineWidth, arcWidth = kRectArcWidth;
+        CGFloat lineWidth = kRectLineWidth;
         CGContextSetLineWidth(context, lineWidth);
         CGContextAddArc(context, x, y, arcWidth, 0, 2*M_PI, 0);
         CGContextDrawPath(context, kCGPathFillStroke);

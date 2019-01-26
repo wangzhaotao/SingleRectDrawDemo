@@ -22,7 +22,9 @@
 
 @property (nonatomic, assign, readonly) BOOL isInQuadrilateral;     //是否是内四边形
 //限制只进行矩形位移
-@property (nonatomic, assign) BOOL isOnlyRectMoving;
+@property (nonatomic, assign) BOOL enableOnlyRectMoving;
+//是否可编辑
+@property (nonatomic, assign) BOOL enableEdite;
 
 #pragma mark public methods
 -(void)addARect;

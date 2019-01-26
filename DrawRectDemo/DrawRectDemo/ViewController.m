@@ -39,7 +39,7 @@
     }];
     
     TJPointCircleView *drawView = [[TJPointCircleView alloc]init];
-    drawView.isOnlyRectMoving = YES;
+    drawView.enableOnlyRectMoving = YES;
     [self.backView addSubview:drawView];
     _drawView = drawView;
     [drawView mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -54,8 +54,19 @@
     [self.view addSubview:addBtn];
     [addBtn mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(view.mas_bottom).offset(10);
-        make.leading.equalTo(@30);
-        make.trailing.equalTo(@(-30));
+        make.leading.equalTo(@20);
+        make.height.equalTo(@40);
+    }];
+    
+    UIButton *editeBtn = [[UIButton alloc]init];
+    [editeBtn setTitle:@"是否可编辑" forState:UIControlStateNormal];
+    [editeBtn setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    [editeBtn addTarget:self action:@selector(clickToEditeRectAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:editeBtn];
+    [editeBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(view.mas_bottom).offset(10);
+        make.leading.equalTo(addBtn.mas_trailing).offset(10);
+        make.trailing.equalTo(@(-20));
         make.height.equalTo(@40);
     }];
 }
@@ -66,6 +77,10 @@
     CGFloat origin_x = (_drawView.bounds.size.width-imgW)/2,
     origin_y = (_drawView.bounds.size.height-imgH)/2;
     [_drawView addRectWithOrigin:CGPointMake(origin_x, origin_y) width:imgW height:imgH];
+}
+-(void)clickToEditeRectAction:(UIButton*)sender {
+    
+    _drawView.enableEdite = !_drawView.enableEdite;
 }
 
 

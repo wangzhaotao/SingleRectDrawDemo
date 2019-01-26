@@ -28,17 +28,33 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
         self.backgroundColor = [UIColor clearColor];
+        self.enableEdite = YES;
+    }
+    return self;
+}
+- (instancetype)init {
+    if (self = [super init]) {
+        self.backgroundColor = [UIColor clearColor];
+        self.enableEdite = YES;
     }
     return self;
 }
 
 #pragma mark public methods
 //限制只进行矩形位移
--(void)setIsOnlyRectMoving:(BOOL)isOnlyRectMoving {
-    _isOnlyRectMoving = isOnlyRectMoving;
+-(void)setEnableOnlyRectMoving:(BOOL)enableOnlyRectMoving {
+    _enableOnlyRectMoving = enableOnlyRectMoving;
     for (TJRectModel *rectMode in self.rectsArray) {
-        rectMode.isOnlyRectMoving = isOnlyRectMoving;
+        rectMode.enableOnlyRectMoving = enableOnlyRectMoving;
     }
+}
+-(void)setEnableEdite:(BOOL)enableEdite {
+    _enableEdite = enableEdite;
+    
+    for (TJRectModel *rectMode in self.rectsArray) {
+        rectMode.enableEdite = enableEdite;
+    }
+    [self setNeedsDisplay];
 }
 //清空之前的绘制
 -(void)clearBeforeCircleAndLines {
@@ -103,7 +119,8 @@
     rectModel.max_width = self.bounds.size.width;
     rectModel.max_height = self.bounds.size.height;
     rectModel.delegate = self;
-    rectModel.isOnlyRectMoving = _isOnlyRectMoving;
+    rectModel.enableOnlyRectMoving = _enableOnlyRectMoving;
+    rectModel.enableEdite = _enableEdite;
     
     return rectModel;
 }
@@ -127,6 +144,11 @@
 //重写touch
 -(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     
+    if (!_enableEdite) {
+        //不可编辑
+        return;
+    }
+    
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
     
@@ -144,6 +166,11 @@
 }
 -(void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     
+    if (!_enableEdite) {
+        //不可编辑
+        return;
+    }
+    
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
     
@@ -153,12 +180,22 @@
 }
 -(void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     
+    if (!_enableEdite) {
+        //不可编辑
+        return;
+    }
+    
     //重新确定四个边角点顺序
     if (self.currentRectModel) {
         [self.currentRectModel touchEndWithPoint:CGPointZero];
     }
 }
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    
+    if (!_enableEdite) {
+        //不可编辑
+        return;
+    }
     
     //检测是否为内四边形
     if (self.currentRectModel) {
